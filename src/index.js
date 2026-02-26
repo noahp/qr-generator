@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { renderUnicodeCompact } from 'uqr';
 
 export default {
   async fetch(request, env, ctx) {
@@ -28,7 +29,32 @@ export default {
         });
       }
 
-      // Generate SVG QR code
+      // Check if request is from curl or other terminal client
+      const userAgent = request.headers.get('User-Agent') || '';
+      console.log('User-Agent:', userAgent);
+
+      const isTerminal = userAgent.toLowerCase().includes('curl') ||
+                        userAgent.toLowerCase().includes('wget') ||
+                        userAgent.toLowerCase().includes('httpie');
+
+      console.log('isTerminal:', isTerminal);
+
+      if (isTerminal) {
+        // Generate terminal-friendly Unicode QR code
+        const unicodeQr = renderUnicodeCompact(decodedUrl);
+
+        return new Response(`${unicodeQr}\n`, {
+          headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'public, max-age=86400',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'Content-Type'
+          }
+        });
+      }
+
+      // Generate SVG QR code for browsers
       const svgString = await QRCode.toString(decodedUrl, {
         type: 'svg',
         width: 256,
